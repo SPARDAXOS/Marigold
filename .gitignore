@@ -1,0 +1,11 @@
+
+#Ignore visual studio user specific files
+*.vs
+
+#Ignore visual studio user specific settings
+*.user
+
+#Ignore build files
+Marigold/Build/Debug/Intermediate/
+Marigold/Build/Debug/Marigold.exe
+Marigold/Build/Debug/Marigold.pdb
