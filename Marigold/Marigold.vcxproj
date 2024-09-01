@@ -72,19 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(ProjectDir)\Build\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate</IntDir>
+    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(ProjectDir)\Build\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate</IntDir>
+    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)\Build\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate</IntDir>
+    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)\Build\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate</IntDir>
+    <IntDir>$(ProjectDir)\Build\$(Configuration)\Intermediate\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -157,7 +157,6 @@
   <ItemGroup>
     <ClInclude Include="Include\Allocator.h" />
     <ClInclude Include="Include\Container.h" />
-    <ClInclude Include="Include\Profiler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp" />
