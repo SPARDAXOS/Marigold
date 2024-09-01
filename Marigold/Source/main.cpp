@@ -62,12 +62,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 
 
-	Marigold::Container<Element> container;
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-
-	Marigold::Container<Element> container2(std::move(container));
+	//Marigold::Container<Element> container;
+	//container.push_back({ 1 });
+	//container.push_back({ 1 });
+	//container.push_back({ 1 });
+	//
+	//Marigold::Container<Element> container2(std::move(container));
 
 
 
@@ -79,22 +79,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 
 	//Copy test!
-	//Marigold::Container<Element> container;
-	//container.push_back({ 1 });
-	//container.push_back({ 1 });
-	//container.push_back({ 1 });
-	//container.push_back({ 1 });
-	//container.push_back({ 1 });
-	//
-	//
-	//
-	//Marigold::Container<Element> container2;
-	//container2.push_back({ 2 });
-	//container2.push_back({ 2 });
-	//container2.push_back({ 2 });
-	//
-	//std::cout << "sbdiabskdbsakldblsiajdölkasjdölksada" << std::endl;
-	//container2 = container;
+	Marigold::Container<Element> container;
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	
+	
+	
+	Marigold::Container<Element> container2;
+	container2.push_back({ 2 });
+	container2.push_back({ 2 });
+	container2.push_back({ 2 });
+	
+	std::cout << "sbdiabskdbsakldblsiajdölkasjdölksada" << std::endl;
+	container2 = container;
 	
 
 	//It works but test it out again with the normal vector and check how the ctor/dtor behaves!

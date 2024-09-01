@@ -598,10 +598,10 @@ namespace Marigold {
 		}
 
 		constexpr inline void copy_assign(const Container& other) {
-
+			//					AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
 			for (unsigned int i = 0; i < other.size(); i++) {
 				if (i >= m_Size)
-					AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
+					emplace_back(*(other.m_Iterator + i)); //Copy ctor? have i been living a lie? i think its the args
 				else
 					*(m_Iterator + i) = *(other.m_Iterator + i);
 			}
