@@ -94,30 +94,34 @@ namespace Marigold {
 			if (this == &other)
 				return *this;
 
-			clear();
 			if (other.m_Iterator) {
 				if constexpr (AllocatorTraits::propagate_on_container_copy_assignment::value) {
 					auto OldAllocator = this->m_Allocator;
 					this->m_Allocator = other.m_Allocator;
 					if (this->m_Allocator != OldAllocator) {
-						OldAllocator.deallocate<Type>(this->m_Iterator, this->m_Capacity);
-						reserve(other.capacity());
-						uninitialized_copy_construct(other);
+						if (other.m_Size <= m_Capacity)
+							swap_allocator_memory(OldAllocator, m_Allocator, m_Capacity);
+						else
+							swap_allocator_memory(OldAllocator, m_Allocator, other.capacity());
+
+						copy_assign(other);
 						return *this;
 					}
 				}
 
 				if (other.size() > this->m_Capacity)
 					reallocate(other.capacity());
-				uninitialized_copy_construct(other);
+				copy_assign(other);
+				return *this;
 			}
 
+			clear();
 			return *this;
 		}
 
 
 		//Move Semantics
-		constexpr Container(Container&& other) noexcept //Requires testing!
+		constexpr Container(Container&& other) noexcept //Fixed: IT WORKS!
 			: m_Allocator(std::move(other.m_Allocator)), m_Iterator(other.m_Iterator), m_Size(other.m_Size), m_Capacity(other.m_Capacity)
 		{
 			other.wipe();
@@ -540,7 +544,7 @@ namespace Marigold {
 		constexpr inline bool empty() const noexcept { return m_Size > 0; }
 
 	private: //Memory
-		constexpr inline Pointer allocate_memory_block(const SizeType capacity) { //REUSE IN RESERVE!
+		constexpr inline Pointer allocate_memory_block(const SizeType capacity) { //REUSE IN RESERVE! BAD THIS SETS THE CAPACITY SO I CANT REUSE IT IN SOME SPOTS
 			if (capacity > max_size())
 				throw std::length_error("Max allowed container size exceeded!");
 
@@ -561,24 +565,31 @@ namespace Marigold {
 			m_Size = 0;
 			m_Iterator = nullptr;
 		}
-		constexpr inline void reallocate(const SizeType capacity) {
-			deallocate_memory_block(m_Capacity);
-			m_Iterator = allocate_memory_block(capacity);
+		constexpr inline void reallocate(const SizeType capacity) { //THIS IS WRONG! IM NOT COPYING ANYTHING OVER!
+			Pointer NewBlock = AllocatorTraits::allocate(m_Allocator, sizeof(Type) * capacity);
+			if (!NewBlock)
+				throw std::bad_alloc();
 
+			if (m_Size > 0)
+				std::memmove(NewBlock, m_Iterator, m_Size * sizeof(Type));
 
+			AllocatorTraits::deallocate(m_Allocator, m_Iterator, m_Size);
+			m_Iterator = NewBlock;
+			m_Capacity = capacity;
+		}
 
-			//Old
-			//Pointer NewBlock = allocate_memory_block(capacity * 2);
-			//if (!NewBlock)
-			//	return; //??
+		//Uses allocation to allocate new memory block and deallocation to deallocate the old one. 
+		constexpr inline void swap_allocator_memory(Allocator& deallocation, Allocator& allocation, const SizeType capacity) {
+			//Im not sure about this. This doesnt take into consideration the different in capacity between the 2.
+			Pointer NewBlock = AllocatorTraits::allocate(allocation, sizeof(Type) * capacity);
+			if (!NewBlock)
+				throw std::bad_alloc();
+			
+			if (m_Size > 0)
+				std::memmove(NewBlock, m_Iterator, m_Size * sizeof(Type)); 
 
-			//if (m_Size > 0) {
-			//	std::memmove(NewBlock, m_Iterator, m_Size * sizeof(Type));
-			//	deallocate_memory_block((m_Capacity / 2)); //?? why 2/ allocate_memory_block would have doubled the size by this point
-			//	m_Iterator = NewBlock;
-			//}
-
-			//m_Iterator = NewBlock;
+			AllocatorTraits::deallocate(deallocation, m_Iterator, m_Size);//not sure about size
+			m_Iterator = NewBlock;
 		}
 
 		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
@@ -586,6 +597,19 @@ namespace Marigold {
 			construct(size, value);
 		}
 
+		constexpr inline void copy_assign(const Container& other) {
+
+			for (unsigned int i = 0; i < other.size(); i++) {
+				if (i >= m_Size)
+					AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
+				else
+					*(m_Iterator + i) = *(other.m_Iterator + i);
+			}
+			if (m_Size > other.size()) // Destory leftovers.
+				destruct(m_Iterator + other.size(), m_Iterator + m_Size);
+
+			m_Size = other.m_Size;
+		}
 		constexpr inline void uninitialized_copy_construct(const Container& other) {
 			m_Size = other.m_Size;
 			for (unsigned int i = 0; i < m_Size; i++)
