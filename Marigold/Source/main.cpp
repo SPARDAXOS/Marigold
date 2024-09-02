@@ -79,6 +79,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 
 	//Copy test!
+	std::cout << "Container Fodder Start" << std::endl;
 	Marigold::Container<Element> container;
 	container.push_back({ 1 });
 	container.push_back({ 1 });
@@ -86,15 +87,29 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	container.push_back({ 1 });
 	container.push_back({ 1 });
 	
-	
-	
 	Marigold::Container<Element> container2;
 	container2.push_back({ 2 });
 	container2.push_back({ 2 });
 	container2.push_back({ 2 });
 	
-	std::cout << "sbdiabskdbsakldblsiajdölkasjdölksada" << std::endl;
+	std::cout << "Container Fodder End" << std::endl;
 	container2 = container;
+
+	std::cout << "Vector Fodder Start" << std::endl;
+	std::vector<Element> vector;
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+
+	std::vector<Element> vector2;
+	vector2.push_back({ 2 });
+	vector2.push_back({ 2 });
+	vector2.push_back({ 2 });
+
+	std::cout << "Vector Fodder End" << std::endl;
+	vector2 = vector;
 	
 
 	//It works but test it out again with the normal vector and check how the ctor/dtor behaves!

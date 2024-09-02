@@ -4,6 +4,7 @@
 #include <math.h>
 #include <concepts>
 #include <functional>
+#include <cassert>
 
 #ifndef CONTAINER_H
 #define CONTAINER_H
@@ -253,6 +254,8 @@ namespace Marigold {
 
 		template<class... args>
 		constexpr inline Pointer emplace(ConstantPointer address, args&&... arguments) { //Needs testing! position as argument to construct!
+			assert(address <= end() && "Vector's argument out of range.");
+
 			SizeType IndexPosition = 0;
 			if (address == end())
 				IndexPosition = m_Size;
@@ -269,7 +272,7 @@ namespace Marigold {
 			//Throw on allocation failure - Attempt to deal with the exception
 			//Call dtor in case there was already something there!
 			//destroy(position); //Not sure!
-			AllocatorTraits::construct(m_Allocator, m_Iterator + IndexPosition, arguments...);
+			AllocatorTraits::construct(m_Allocator, m_Iterator + IndexPosition, std::forward<args>(arguments)...);
 
 			m_Size++;
 			return m_Iterator + IndexPosition;
@@ -565,7 +568,7 @@ namespace Marigold {
 			m_Size = 0;
 			m_Iterator = nullptr;
 		}
-		constexpr inline void reallocate(const SizeType capacity) { //THIS IS WRONG! IM NOT COPYING ANYTHING OVER!
+		constexpr inline void reallocate(const SizeType capacity) { //THIS IS WRONG! needs the checks from reserve. make sure i always allocate by factor of 2!
 			Pointer NewBlock = AllocatorTraits::allocate(m_Allocator, sizeof(Type) * capacity);
 			if (!NewBlock)
 				throw std::bad_alloc();
@@ -598,15 +601,33 @@ namespace Marigold {
 		}
 
 		constexpr inline void copy_assign(const Container& other) {
-			//					AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
-			for (unsigned int i = 0; i < other.size(); i++) {
-				if (i >= m_Size)
-					emplace_back(*(other.m_Iterator + i)); //Copy ctor? have i been living a lie? i think its the args
-				else
-					*(m_Iterator + i) = *(other.m_Iterator + i);
+			//There seem to be 2 different behaviors depending on other.size() > size()
+
+			if (other.size() > size()) {
+				destruct(begin(), end()); //It makes sense cause other.size() is higher so they all are gonna get replaced really.
+				for (unsigned int i = 0; i < other.size(); i++) {
+					if (i >= m_Size)
+						AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
+					else { //Testing
+						emplace(m_Iterator + i, *(other.m_Iterator + i));
+						//*(m_Iterator + i) = *(other.m_Iterator + i);
+					}
+				}
 			}
+			else {
+				for (unsigned int i = 0; i < other.size(); i++) {
+					if (i >= m_Size)
+						AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
+					else { //Testing
+						*(m_Iterator + i) = *(other.m_Iterator + i);
+					}
+				}
+			}
+
+
+
 			if (m_Size > other.size()) // Destory leftovers.
-				destruct(m_Iterator + other.size(), m_Iterator + m_Size);
+				destruct(m_Iterator + other.size(), m_Iterator + m_Size); //Test this now with the new behavior
 
 			m_Size = other.m_Size;
 		}
