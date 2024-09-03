@@ -41,7 +41,7 @@ namespace Marigold {
 		static_assert(std::is_object_v<T>, "The C++ Standard forbids containers of non-object types "
 			"because of [container.requirements].");
 
-	public: //Ctors - ALL TESTED AND WORKS!
+	public: //Ctors
 		constexpr Container() noexcept (noexcept(Allocator())) {};
 		constexpr explicit Container(const Allocator& allocator) noexcept
 			: m_Allocator(allocator)
@@ -69,8 +69,7 @@ namespace Marigold {
 			construct_from_list(list);
 		}
 
-
-		//Copy Semantics - ALL TESTED AND WORKS!
+		//Copy Semantics
 		constexpr Container(const Container& other)
 			: m_Allocator(AllocatorTraits::select_on_container_copy_construction(other.m_Allocator))
 		{
@@ -118,7 +117,6 @@ namespace Marigold {
 			return *this;
 		}
 
-
 		//Move Semantics
 		constexpr Container(Container&& other) noexcept //Fixed: IT WORKS! Not sure. Im not moving the elements. check vector behavior. Might be fine to leave it
 			: m_Allocator(std::move(other.m_Allocator)), m_Iterator(other.m_Iterator), m_Size(other.m_Size), m_Capacity(other.m_Capacity)
@@ -137,11 +135,11 @@ namespace Marigold {
 				other.wipe();
 			}
 		}
-		Container& operator=(Container&& other) noexcept { //Fixed: Requires a test
+		Container& operator=(Container&& other) noexcept {
 			if (this == &other)
 				return *this;
 
-			if constexpr (AllocatorTraits::propagate_on_container_move_assignment::value) { //SUCCESS
+			if constexpr (AllocatorTraits::propagate_on_container_move_assignment::value) {
 				destruct_and_deallocate();
 				this->m_Allocator = other.get_allocator();
 				this->m_Iterator = other.m_Iterator;
@@ -149,19 +147,17 @@ namespace Marigold {
 				this->m_Capacity = other.m_Capacity;
 				other.wipe();
 			}
-			else if (!AllocatorTraits::propagate_on_container_move_assignment::value && this->m_Allocator == other.get_allocator()) { //NOT TESTED
-				//Could be merged with below destroy_all_and_deallocate()
+			else if (!AllocatorTraits::propagate_on_container_move_assignment::value && this->m_Allocator == other.get_allocator()) {
 				destruct_and_deallocate();
 				this->m_Iterator = other.m_Iterator;
 				this->m_Size = other.m_Size;
 				this->m_Capacity = other.m_Capacity;
 				other.wipe();
 			}
-			else if (!AllocatorTraits::propagate_on_container_move_assignment::value && this->m_Allocator != other.get_allocator()) { //NOT TESTED
-				//Cant take ownership of memory block, add elements instead and allocate memory if needed.
+			else {
 				clear();
 				if (other.size() > this->m_Capacity)
-					reallocate(other.capacity()); //Will get me its capacity ONLY IF I CANT TAKE IT WITH MY OWN //Should probably also copy its capacity always for a clear move semantics
+					reallocate(other.capacity());
 
 				for (SizeType i = 0; i < other.size(); i++) {
 					AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
@@ -172,15 +168,12 @@ namespace Marigold {
 				other.wipe();
 			}
 
-			//In any case, original elements are all destroyed or replaced by element-wise move-assignment
 			return *this;
 		}
 
-
+		//Dtor
 		~Container() {
-			//Could be made into func destroy_and_deallocate()
-			clear();
-			deallocate_memory_block(m_Capacity);
+			destruct_and_deallocate();
 		}
 
 		constexpr Container& operator=(InitializerList ilist) { //Requires a test.
@@ -224,21 +217,9 @@ namespace Marigold {
 
 	public: //Insertion
 		constexpr inline void push_back(ConstantReference value) {
-			//DRY - Taking an iterator to a pos before reallocating invalidates it! fix this!
-			if (m_Capacity == 0)
-				reserve(1);
-			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * 2);
-
 			emplace_back(value);
 		}
 		constexpr inline void push_back(Type&& value) {
-			//DRY - Taking an iterator to a pos before reallocating invalidates it! fix this!
-			if (m_Capacity == 0)
-				reserve(1);
-			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * 2);
-
 			emplace_back(std::move(value));
 		}
 
@@ -249,32 +230,36 @@ namespace Marigold {
 			SizeType IndexPosition = 0;
 			if (address == end())
 				IndexPosition = m_Size;
-			else {
-				ConstantPointer Begin = begin();
-				IndexPosition = std::distance(address, Begin);
-			}
+			else
+				IndexPosition = std::distance<ConstantPointer>(begin(), address);
 
 			if (m_Capacity == 0)
 				reserve(1);
 			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * 2);
+				reserve(m_Capacity * 2); //TODO: Make into constant.
 
 			//Throw on allocation failure - Attempt to deal with the exception
 			//Call dtor in case there was already something there!
 			//destroy(position); //Not sure!
-			AllocatorTraits::construct(m_Allocator, m_Iterator + IndexPosition, std::forward<args>(arguments)...);
+
+			if (m_Iterator + IndexPosition == end()) {
+				try {
+					AllocatorTraits::construct(m_Allocator, m_Iterator + size(), std::forward<args>(arguments)...);
+				}
+				catch (...) {
+					destruct(m_Iterator + size());
+					throw;
+				}
+			}
+			else {
+				construct_and_shift(IndexPosition, std::forward<args>(arguments)...);
+			}
 
 			m_Size++;
 			return m_Iterator + IndexPosition;
 		}
 		template<class... args>
 		constexpr inline Reference emplace_back(args&&... arguments) {
-			//DRY - Taking an iterator to a pos before reallocating invalidates it! fix this!
-			if (m_Capacity == 0)
-				reserve(1);
-			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * 2);
-
 			emplace(end(), std::forward<args>(arguments)...);
 			return *(m_Iterator + (m_Size - 1));
 		}
@@ -340,7 +325,7 @@ namespace Marigold {
 		constexpr inline void clear() noexcept {
 			if (m_Size == 0)
 				return;
-			//TODO: destruct() call destroy on all elements then set size to 0. Cleaner and less risky than this!
+
 			destruct(begin(), end());
 			m_Size = 0;
 		}
@@ -647,6 +632,30 @@ namespace Marigold {
 			for (SizeType index = 0; index < values.size(); index++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + index, *(values.begin() + index));
 		}
+
+		//Doesnt provide strong guarantee if type can throw.
+		template<class... args>
+		constexpr inline void construct_and_shift(SizeType position, args&&... arguments) {
+			if (position > size())
+				throw std::invalid_argument("Invalid iterator access");
+
+			if (size() + 1 == capacity()) {
+				Pointer NewBuffer = AllocatorTraits::allocate(m_Allocator, sizeof(Type)); //Need more generalized way of allocating and deallocating.
+				if (!NewBuffer)
+					throw std::bad_alloc();
+
+				AllocatorTraits::construct(m_Allocator, NewBuffer, arguments...);
+				std::move_backward(m_Iterator + position, m_Iterator + size(), m_Iterator + size() + 1);
+				*(m_Iterator + position) = std::move(*(NewBuffer));
+				AllocatorTraits::deallocate(m_Allocator, NewBuffer, sizeof(Type));
+			}
+			else {
+				AllocatorTraits::construct(m_Allocator, m_Iterator + size(), arguments...);
+				std::move_backward(m_Iterator + position, m_Iterator + size() + 1, m_Iterator + size() + 2);
+				*(m_Iterator + position) = std::move(*(m_Iterator + size() + 1));
+			}
+		}
+
 		constexpr inline void destruct(Pointer target) noexcept {
 			if (!target)
 				return;

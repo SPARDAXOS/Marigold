@@ -28,6 +28,7 @@ struct Element {
 		if (this == &other)
 			return *this;
 		else {
+			this->number = other.number;
 			return *this;
 		}
 	}
@@ -41,6 +42,7 @@ struct Element {
 		if (this == &other)
 			return *this;
 		else {
+			this->number = std::move(other.number);
 			return *this;
 		}
 	}
@@ -70,14 +72,29 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	//Marigold::Container<Element> container2(std::move(container));
 
 
+	Element element;
+	Element element1{ 1 };
+	Element element2{ 2 };
+	Element element3{ 3 };
+	Element element4{ 4 };
+	//std::vector<Element> vectorTest;
+	//vectorTest.reserve(10);
+	//vectorTest.emplace(vectorTest.begin() + 5, element);
 
-	Marigold::Container<Element> container;
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	container.push_back({ 1 });
 	
-	std::cout << "/////////Container Process Start/////////" << std::endl;
+	Marigold::Container<Element> container;
+	container.emplace(container.end(), element1);
+	container.emplace(container.end(), element2);
+	container.emplace(container.begin() + 1, element4);
+	container.emplace(container.end(), element3);
+	
+
 	Marigold::Container<Element> container2;
+	container2.emplace_back(element); 
+	container2.emplace_back(element);
+	container2.emplace_back(element);
+	container2.at(0);
+	std::cout << "/////////Container Process Start/////////" << std::endl;
 	container2 = std::move(container);
 	std::cout << "/////////Container Process End/////////" << std::endl;
 	
