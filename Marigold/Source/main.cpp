@@ -71,60 +71,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Element element;
 	Marigold::Container<Element> container;
-
-	container.reserve(10);
-	container.emplace_back(element);
-
-	if (container.size() > 0)
-		container.clear();
-
-	container.push_back(element);
-	container.insert(&container[1], element);
-
-	container.shrink_to_fit();
-	if (container.capacity() == 2)
-		container.erase(&container[0]);
-
-	container.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	//Marigold::Container<Element> container;
 	container.push_back({ 1 });
 	container.push_back({ 1 });
 	container.push_back({ 1 });
 	
 	std::cout << "/////////Container Process Start/////////" << std::endl;
-	Marigold::Container<Element> container2(std::move(container), allocator);
+	Marigold::Container<Element> container2;
+	container2 = std::move(container);
 	std::cout << "/////////Container Process End/////////" << std::endl;
 	
 	std::vector<Element> vector;

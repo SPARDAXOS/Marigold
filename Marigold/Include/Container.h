@@ -128,7 +128,8 @@ namespace Marigold {
 		constexpr Container(Container&& other, const Allocator& allocator)  //Fixed: Requires a test
 			: m_Size(other.m_Size), m_Capacity(other.m_Capacity), m_Allocator(std::move(allocator))
 		{
-			if (allocator != other.get_allocator()) {
+			//flip them?
+			if (allocator != other.get_allocator()) { 
 				uninitialized_allocate_and_move(std::move(other));
 			}
 			else {
@@ -141,20 +142,19 @@ namespace Marigold {
 				return *this;
 
 			if constexpr (AllocatorTraits::propagate_on_container_move_assignment::value) { //SUCCESS
-				clear(); //Could be merged with below destroy_all_and_deallocate()
-				deallocate_memory_block(m_Capacity);
-
+				destruct_and_deallocate();
 				this->m_Allocator = other.get_allocator();
 				this->m_Iterator = other.m_Iterator;
-
+				this->m_Size = other.m_Size;
+				this->m_Capacity = other.m_Capacity;
 				other.wipe();
 			}
 			else if (!AllocatorTraits::propagate_on_container_move_assignment::value && this->m_Allocator == other.get_allocator()) { //NOT TESTED
 				//Could be merged with below destroy_all_and_deallocate()
-				clear(); 
-				deallocate_memory_block(m_Capacity);
-
+				destruct_and_deallocate();
 				this->m_Iterator = other.m_Iterator;
+				this->m_Size = other.m_Size;
+				this->m_Capacity = other.m_Capacity;
 				other.wipe();
 			}
 			else if (!AllocatorTraits::propagate_on_container_move_assignment::value && this->m_Allocator != other.get_allocator()) { //NOT TESTED
@@ -163,18 +163,16 @@ namespace Marigold {
 				if (other.size() > this->m_Capacity)
 					reallocate(other.capacity()); //Will get me its capacity ONLY IF I CANT TAKE IT WITH MY OWN //Should probably also copy its capacity always for a clear move semantics
 
-				for (SizeType i = 0; i < other.size(); i++) //Could be func move_elements or could resuse assign once it replaces.
-					this->at(i) = std::move(other[i]);
+				for (SizeType i = 0; i < other.size(); i++) {
+					AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
+					m_Size++;
+				}
 
-				other.clear();
-				other.deallocate_memory_block(other.capacity()); //Clear its memory
+				other.destruct_and_deallocate();
 				other.wipe();
 			}
 
 			//In any case, original elements are all destroyed or replaced by element-wise move-assignment
-
-			this->m_Size = other.m_Size;
-			this->m_Capacity = other.m_Capacity;
 			return *this;
 		}
 
@@ -552,7 +550,7 @@ namespace Marigold {
 			if (!NewBuffer)
 				throw std::bad_alloc();
 
-			m_Capacity = capacity;
+			m_Capacity = capacity; //THIS IS REALLY SUS. SOMEITMES I USE THIS FUNCTION CAUSE I JUST WANT A BLOCK!
 			return NewBuffer;
 		}
 		constexpr inline void deallocate_memory_block(const SizeType size) {

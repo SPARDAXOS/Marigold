@@ -80,12 +80,12 @@ private:
 namespace {
 	template <class T, class U>
 	constexpr bool operator==(const CustomAllocator<T>&, const CustomAllocator<U>&) noexcept {
-		return true;
+		return true; //true
 	}
 
 	template <class T, class U>
 	constexpr bool operator!=(const CustomAllocator<T>&, const CustomAllocator<U>&) noexcept {
-		return true;
+		return false; //false
 	}
 }
 #endif // !CUSTOM_ALLOCATOR
