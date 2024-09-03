@@ -350,7 +350,7 @@ namespace Marigold {
 			if (m_Size == 0)
 				return;
 
-			destroy(end() - 1);
+			destruct(end() - 1);
 		}
 		constexpr inline Pointer erase(ConstantPointer iterator) {
 			if (m_Size == 0)
@@ -492,7 +492,7 @@ namespace Marigold {
 			m_Allocator.deallocate<Type>(m_Iterator, (m_Capacity / 2));
 			m_Iterator = NewBuffer;
 		}
-		constexpr inline void shrink_to_fit() {
+		constexpr inline void shrink_to_fit() { //sus
 			if (m_Capacity == m_Size)
 				return;
 
@@ -503,7 +503,7 @@ namespace Marigold {
 				return;
 			}
 			else {
-				Pointer NewBuffer = AllocatorTraits.allocate<Type>(m_Allocator, sizeof(Type) * m_Size);
+				Pointer NewBuffer = allocate_memory_block(m_Size);
 				if (!NewBuffer)
 					throw std::bad_alloc();
 
