@@ -11,7 +11,7 @@ public:
 	using const_pointer = const _Alloc*;
 	using const_reference = const _Alloc&;
 
-	using propagate_on_container_move_assignment = std::false_type; //true
+	using propagate_on_container_move_assignment = std::true_type;
 	using propagate_on_container_copy_assignment = std::true_type;
 	using propagate_on_container_swap			 = std::true_type;
 	//using is_always_equal						 = std::true_type; //C++17 for non-empty allocators that are always equal

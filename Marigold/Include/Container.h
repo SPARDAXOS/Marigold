@@ -12,7 +12,8 @@
 
 namespace Marigold {
 
-	constexpr auto INVALID_INDEX = -1;
+	inline constexpr auto INVALID_INDEX = -1;
+	inline constexpr std::size_t REALLOCATION_FACTOR = 2;
 
 	template <typename T>
 	concept IsPointer = std::is_pointer_v<T>;
@@ -34,6 +35,7 @@ namespace Marigold {
 		using Reference = T&;
 		using ConstantReference = const T&;
 		using Predicate = std::function<bool(const T&)>;
+		using DifferenceType = std::ptrdiff_t;
 		using AllocatorTraits = std::allocator_traits<CustomAllocator<Type>>;
 
 
@@ -176,6 +178,7 @@ namespace Marigold {
 			destruct_and_deallocate();
 		}
 
+		//NOT TESTED
 		constexpr Container& operator=(InitializerList ilist) { //Requires a test.
 			clear(); //Should really make a destory function. Cause thats what i want out of this most of the time. might be fine tho. Its just that size gets changed too. Otherwise 
 			//its just destroy(first, last) really.
@@ -189,7 +192,7 @@ namespace Marigold {
 			return *this;
 		}
 
-	public: //Access
+	public: //Access - ALL GOOD!
 		constexpr inline Reference at(SizeType index) {
 			if (index >= m_Size)
 				throw std::out_of_range("Access Violation - " + index);
@@ -203,8 +206,16 @@ namespace Marigold {
 			return m_Iterator[index];
 		}
 
-		constexpr inline Pointer data() noexcept { return m_Iterator; }
-		constexpr inline ConstantPointer data() const noexcept { return m_Iterator; }
+		constexpr inline Pointer data() noexcept { 
+			if (size() <= 0)
+				return nullptr;
+			return m_Iterator; 
+		}
+		constexpr inline ConstantPointer data() const noexcept { 
+			if (size() <= 0)
+				return nullptr;
+			return m_Iterator; 
+		}
 
 		constexpr inline Reference front() noexcept { return m_Iterator[0]; }
 		constexpr inline ConstantReference front() const noexcept { return m_Iterator[0]; }
@@ -212,19 +223,30 @@ namespace Marigold {
 		constexpr inline Reference back() noexcept { return m_Iterator[m_Size - 1]; }
 		constexpr inline ConstantReference back() const noexcept { return m_Iterator[m_Size - 1]; }
 
-		constexpr inline Reference operator[](SizeType index) noexcept { return m_Iterator[index]; } //Add compile-time assertion
-		constexpr inline ConstantReference operator[](SizeType index) const noexcept { return m_Iterator[index]; } //Add compile-time assertion
+		constexpr inline Reference operator[](SizeType index) noexcept { 
+			assert(index < size() && "Index out of range");
+			return m_Iterator[index]; 
+		} 
+		constexpr inline ConstantReference operator[](SizeType index) const noexcept { 
+			assert(index < size() && "Index out of range");
+			return m_Iterator[index]; 
+		} 
 
 	public: //Insertion
+
+		// IT WORKS!
 		constexpr inline void push_back(ConstantReference value) {
 			emplace_back(value);
 		}
+
+		// IT WORKS!
 		constexpr inline void push_back(Type&& value) {
 			emplace_back(std::move(value));
 		}
 
+		// IT WORKS!
 		template<class... args>
-		constexpr inline Pointer emplace(ConstantPointer address, args&&... arguments) { //Needs testing! position as argument to construct!
+		constexpr inline Pointer emplace(ConstantPointer address, args&&... arguments) { 
 			assert(address <= end() && "Vector's argument out of range.");
 
 			SizeType IndexPosition = 0;
@@ -236,11 +258,7 @@ namespace Marigold {
 			if (m_Capacity == 0)
 				reserve(1);
 			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * 2); //TODO: Make into constant.
-
-			//Throw on allocation failure - Attempt to deal with the exception
-			//Call dtor in case there was already something there!
-			//destroy(position); //Not sure!
+				reserve(m_Capacity * REALLOCATION_FACTOR);
 
 			if (m_Iterator + IndexPosition == end()) {
 				try {
@@ -251,18 +269,20 @@ namespace Marigold {
 					throw;
 				}
 			}
-			else {
+			else
 				construct_and_shift(IndexPosition, std::forward<args>(arguments)...);
-			}
 
 			m_Size++;
 			return m_Iterator + IndexPosition;
 		}
+
+		// IT WORKS!
 		template<class... args>
 		constexpr inline Reference emplace_back(args&&... arguments) {
 			emplace(end(), std::forward<args>(arguments)...);
 			return *(m_Iterator + (m_Size - 1));
 		}
+
 
 		constexpr inline Pointer insert(ConstantPointer position, ConstantReference value) {
 			return emplace(position, value);
@@ -311,7 +331,9 @@ namespace Marigold {
 				m_Size++;
 			}
 		}
-		constexpr void assign(InitializerList list) { //Fixed: Works!
+
+		//IT WORKS! but recheck it
+		constexpr void assign(InitializerList list) { 
 			if (m_Size > 0)
 				clear();
 
@@ -322,6 +344,7 @@ namespace Marigold {
 		}
 
 	public: //Removal
+		//IT WORKS!
 		constexpr inline void clear() noexcept {
 			if (m_Size == 0)
 				return;
@@ -329,12 +352,15 @@ namespace Marigold {
 			destruct(begin(), end());
 			m_Size = 0;
 		}
+
+		//IT WORKS!
 		constexpr inline void pop_back() {
 			if (m_Size == 0)
 				return;
 
 			destruct(end() - 1);
 		}
+
 		constexpr inline Pointer erase(ConstantPointer iterator) {
 			if (m_Size == 0)
 				return nullptr;
@@ -435,7 +461,7 @@ namespace Marigold {
 			return nullptr; //??
 		}
 
-	public: //Iterators
+	public: //Iterators - ALL GOOD!
 		constexpr inline Pointer begin() noexcept { return m_Iterator; }
 		constexpr inline ConstantPointer begin() const noexcept { return m_Iterator; }
 		constexpr inline ConstantPointer cbegin() const noexcept { return m_Iterator; }
@@ -453,28 +479,18 @@ namespace Marigold {
 		constexpr inline ConstantPointer cend() const noexcept { return m_Iterator + m_Size; }
 
 	public: //Capacity
+		//IT WORKS!
 		constexpr inline void reserve(SizeType capacity) {
-			if (m_Capacity > capacity || m_Capacity == capacity) //The second check needs testing!
+			if (m_Capacity > capacity || m_Capacity == capacity)
 				return;
 
-			//from here down
 			if (capacity > max_size())
 				throw std::length_error("Max allowed container size exceeded!");
 
-			Pointer NewBuffer = m_Allocator.allocate(sizeof(Type) * capacity);
-			if (!NewBuffer)
-				throw std::bad_alloc();
-
-			m_Capacity = capacity;
-			if (m_Size == 0) {
-				m_Iterator = NewBuffer;
-				return;
-			}
-
-			std::memmove(NewBuffer, m_Iterator, m_Size * sizeof(Type));
-			m_Allocator.deallocate<Type>(m_Iterator, (m_Capacity / 2));
-			m_Iterator = NewBuffer;
+			reallocate(capacity);
 		}
+
+
 		constexpr inline void shrink_to_fit() { //sus
 			if (m_Capacity == m_Size)
 				return;
@@ -515,124 +531,130 @@ namespace Marigold {
 		}
 		//Resize
 
+		//All of these are good!
 		constexpr inline CustomAllocator<Type> get_allocator() const noexcept { return m_Allocator; }
 		constexpr inline SizeType max_size() const noexcept { return static_cast<SizeType>(pow(2, sizeof(Pointer) * 8) / sizeof(Type) - 1); }
 		constexpr inline SizeType capacity() const noexcept { return m_Capacity; }
 		constexpr inline SizeType size() const noexcept { return m_Size; }
-		constexpr inline bool empty() const noexcept { return m_Size > 0; }
+		constexpr inline bool empty() const noexcept { return m_Size == 0; }
+		constexpr inline bool is_null() const noexcept { return m_Iterator == nullptr; }
 
 	private: //Memory
+		//IT WORKS!
 		constexpr inline void destruct_and_deallocate() {
 			clear();
-			deallocate_memory_block(capacity());
+			deallocate_memory_block(m_Iterator, capacity(), m_Allocator);
+			m_Capacity = 0;
 		}
-		constexpr inline Pointer allocate_memory_block(const SizeType capacity) { //REUSE IN RESERVE! BAD THIS SETS THE CAPACITY SO I CANT REUSE IT IN SOME SPOTS
-			if (capacity > max_size())
-				throw std::length_error("Max allowed container size exceeded!");
 
+		//IT WORKS!
+		constexpr inline Pointer allocate_memory_block(const SizeType capacity, Allocator& allocator) {
 			//No guarantee
-			Pointer NewBuffer = AllocatorTraits::allocate(m_Allocator, sizeof(Type) * capacity);
+			Pointer NewBuffer = AllocatorTraits::allocate(allocator, sizeof(Type) * capacity);
 			if (!NewBuffer)
 				throw std::bad_alloc();
 
-			m_Capacity = capacity; //THIS IS REALLY SUS. SOMEITMES I USE THIS FUNCTION CAUSE I JUST WANT A BLOCK!
 			return NewBuffer;
 		}
-		constexpr inline void deallocate_memory_block(const SizeType size) {
-			if (!m_Iterator)
+
+		//IT WORKS! but requires reusage in some places.
+		constexpr inline void deallocate_memory_block(Pointer location, const SizeType size, Allocator& allocator) {
+			if (!location || size == 0)
 				return;
 
-			AllocatorTraits::deallocate(m_Allocator, m_Iterator, size);
-			m_Capacity = 0; //?? might cause complications with the other alloc funcs. I uncommented this.
-			m_Size = 0;
-			m_Iterator = nullptr;
+			AllocatorTraits::deallocate(allocator, location, size);
 		}
-		constexpr inline void reallocate(const SizeType capacity) { //THIS IS WRONG! needs the checks from reserve. make sure i always allocate by factor of 2!
-			Pointer NewBlock = AllocatorTraits::allocate(m_Allocator, sizeof(Type) * capacity);
-			if (!NewBlock)
-				throw std::bad_alloc();
 
+		//IT WORKS!
+		//Doesnt provide guarantee
+		constexpr inline void reallocate(const SizeType capacity) {
+			Pointer NewBlock = allocate_memory_block(capacity, m_Allocator);
 			if (m_Size > 0)
 				std::memmove(NewBlock, m_Iterator, m_Size * sizeof(Type));
 
-			AllocatorTraits::deallocate(m_Allocator, m_Iterator, m_Size);
+			if (m_Capacity > 0)
+				deallocate_memory_block(m_Iterator, m_Capacity, m_Allocator);
+
 			m_Iterator = NewBlock;
 			m_Capacity = capacity;
 		}
 
+		//IT WORKS!
 		//Uses allocation to allocate new memory block and deallocation to deallocate the old one. 
 		constexpr inline void swap_allocator_memory(Allocator& deallocation, Allocator& allocation, const SizeType capacity) {
-			//Im not sure about this. This doesnt take into consideration the different in capacity between the 2.
-			Pointer NewBlock = AllocatorTraits::allocate(allocation, sizeof(Type) * capacity);
-			if (!NewBlock)
-				throw std::bad_alloc();
-			
+			Pointer NewBlock = allocate_memory_block(capacity, allocation);
+
 			if (m_Size > 0)
 				std::memmove(NewBlock, m_Iterator, m_Size * sizeof(Type)); 
 
-			AllocatorTraits::deallocate(deallocation, m_Iterator, m_Size);//not sure about size
+			deallocate_memory_block(m_Iterator, m_Capacity, deallocation);
+
 			m_Iterator = NewBlock;
+			m_Capacity = capacity;
 		}
 
+		//IT WORKS!
 		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
-			m_Iterator = allocate_memory_block(capacity);
+			reallocate(capacity);
 			construct(size, value);
 		}
 
+		//IT WORKS!
 		constexpr inline void copy_assign(const Container& other) {
-			//There seem to be 2 different behaviors depending on other.size() > size()
-
 			if (other.size() > size()) {
 				destruct(begin(), end()); //It makes sense cause other.size() is higher so they all are gonna get replaced really.
 				for (unsigned int i = 0; i < other.size(); i++) {
 					if (i >= m_Size)
 						AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
-					else { //Testing
+					else
 						emplace(m_Iterator + i, *(other.m_Iterator + i));
-						//*(m_Iterator + i) = *(other.m_Iterator + i);
-					}
 				}
 			}
 			else {
 				for (unsigned int i = 0; i < other.size(); i++) {
 					if (i >= m_Size)
 						AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
-					else { //Testing
+					else
 						*(m_Iterator + i) = *(other.m_Iterator + i);
-					}
 				}
+
+				if (m_Size > other.size()) // Destory leftovers.
+					destruct(m_Iterator + other.size(), m_Iterator + m_Size);
 			}
-
-
-
-			if (m_Size > other.size()) // Destory leftovers.
-				destruct(m_Iterator + other.size(), m_Iterator + m_Size); //Test this now with the new behavior
 
 			m_Size = other.m_Size;
 		}
+
+
 		constexpr inline void uninitialized_copy_construct(const Container& other) {
 			m_Size = other.m_Size;
 			for (unsigned int i = 0; i < m_Size; i++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
 		}
 		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
-			m_Iterator = allocate_memory_block(other.capacity());
+			reallocate(other.capacity());
 			for (SizeType i = 0; i < m_Size; i++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
 			other.destruct_and_deallocate();
 		}
 
+
+		//TODO: Add one more that constructs 1 object at a spot!
 		constexpr inline void construct(SizeType size, ConstantReference value) {
 			m_Size = size;
 			for (SizeType index = 0; index < size; index++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + index, value);
 		}
+
+		//IT WORKS! but swap construct!
 		constexpr inline void construct_from_list(const InitializerList& values) {
 			m_Size = values.size();
 			for (SizeType index = 0; index < values.size(); index++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + index, *(values.begin() + index));
 		}
 
+
+		//Should work but try out the new swapped allocation functions!!
 		//Doesnt provide strong guarantee if type can throw.
 		template<class... args>
 		constexpr inline void construct_and_shift(SizeType position, args&&... arguments) {
@@ -640,14 +662,13 @@ namespace Marigold {
 				throw std::invalid_argument("Invalid iterator access");
 
 			if (size() + 1 == capacity()) {
-				Pointer NewBuffer = AllocatorTraits::allocate(m_Allocator, sizeof(Type)); //Need more generalized way of allocating and deallocating.
-				if (!NewBuffer)
-					throw std::bad_alloc();
+				Pointer NewBuffer = allocate_memory_block(sizeof(Type), m_Allocator); //Temporary block
 
 				AllocatorTraits::construct(m_Allocator, NewBuffer, arguments...);
 				std::move_backward(m_Iterator + position, m_Iterator + size(), m_Iterator + size() + 1);
 				*(m_Iterator + position) = std::move(*(NewBuffer));
-				AllocatorTraits::deallocate(m_Allocator, NewBuffer, sizeof(Type));
+
+				deallocate_memory_block(NewBuffer, sizeof(Type), m_Allocator); //Clean Temporary block
 			}
 			else {
 				AllocatorTraits::construct(m_Allocator, m_Iterator + size(), arguments...);
@@ -674,6 +695,8 @@ namespace Marigold {
 
 			m_Size--;
 		}
+
+		//IT WORKS!
 		constexpr inline void destruct(Pointer first, Pointer last) noexcept {
 			if (!first || !last)
 				return;
@@ -692,8 +715,8 @@ namespace Marigold {
 			}
 		}
 
+		//IT WORKS!
 		constexpr inline void wipe() noexcept {
-			//clear(); //Test this! HUGE PROBLEM. I WAS DEPENDING ON THIS BUT IT SHOULDNT BE HERE
 			m_Iterator = nullptr;
 			m_Size = 0;
 			m_Capacity = 0;

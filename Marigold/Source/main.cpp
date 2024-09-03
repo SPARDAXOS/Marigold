@@ -81,15 +81,32 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	//vectorTest.reserve(10);
 	//vectorTest.emplace(vectorTest.begin() + 5, element);
 
-	
+	//Emplace test
 	Marigold::Container<Element> container;
+	container.reserve(10);
 	container.emplace(container.end(), element1);
 	container.emplace(container.end(), element2);
+	container.emplace(container.end(), element3);
 	container.emplace(container.begin() + 1, element4);
 	container.emplace(container.end(), element3);
 	
-
 	Marigold::Container<Element> container2;
+	container2.emplace_back(element);
+	container2.emplace_back(element);
+	container = container2;
+
+
+	//Results: There is difference between marigold and standard when it comes to shifting elements in emplace.
+	// The standard calls dtor while marigold calls 3 more move assignments but no dtor.
+	//std::vector<Element> vector;
+	//vector.reserve(10);
+	//vector.emplace(vector.end(), element1);
+	//vector.emplace(vector.end(), element2);
+	//vector.emplace(vector.end(), element3);
+	//vector.emplace(vector.begin() + 1, element4);
+	//vector.emplace(vector.end(), element3);
+
+	//Marigold::Container<Element> container2;
 	container2.emplace_back(element); 
 	container2.emplace_back(element);
 	container2.emplace_back(element);
