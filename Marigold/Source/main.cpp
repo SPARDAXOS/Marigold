@@ -7,24 +7,24 @@
 struct Element {
 
 	Element() {
-		std::cout << "ctor" << std::endl;
+		std::cout << "ctor " << number << std::endl;
 	}
 	Element(int value) 
 		:	number(value)
 	{
-		std::cout << "ctor" << std::endl;
+		std::cout << "ctor " << number << std::endl;
 	}
 	~Element() {
-		std::cout << "dtor" << std::endl;
+		std::cout << "dtor " << number << std::endl;
 	}
 
 
 	Element(const Element& other) {
-		std::cout << "copy ctor" << std::endl;
+		std::cout << "copy ctor " << number << std::endl;
 		*this = other;
 	}
 	Element& operator=(const Element& other) {
-		std::cout << "copy assignment ctor" << std::endl;
+		std::cout << "copy assignment ctor " << number << std::endl;
 		if (this == &other)
 			return *this;
 		else {
@@ -33,11 +33,11 @@ struct Element {
 	}
 
 	Element(Element&& other) {
-		std::cout << "move ctor" << std::endl;
+		std::cout << "move ctor " << number << std::endl;
 		*this = std::move(other);
 	}
 	Element& operator=(Element&& other) {
-		std::cout << "move assignment ctor" << std::endl;
+		std::cout << "move assignment ctor " << number << std::endl;
 		if (this == &other)
 			return *this;
 		else {
@@ -71,45 +71,61 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 
 
-
-
-
+	Marigold::Container<Element> container;
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	container.push_back({ 1 });
+	
+	std::cout << "/////////Container Process Start/////////" << std::endl;
+	Marigold::Container<Element> container2(std::move(container), allocator);
+	std::cout << "/////////Container Process End/////////" << std::endl;
+	
+	std::vector<Element> vector;
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+	vector.push_back({ 1 });
+	
+	std::cout << "/////////Vector Process Start/////////" << std::endl;
+	std::vector<Element> vector2(std::move(vector));
+	std::cout << "/////////Vector Process End/////////" << std::endl;
 
 
 
 
 	//Copy test!
-	std::cout << "Container Fodder Start" << std::endl;
-	Marigold::Container<Element> container;
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	container.push_back({ 1 });
-	
-	Marigold::Container<Element> container2;
-	container2.push_back({ 2 });
-	container2.push_back({ 2 });
-	container2.push_back({ 2 });
-	
-	std::cout << "Container Fodder End" << std::endl;
-	container2 = container;
-
-	std::cout << "Vector Fodder Start" << std::endl;
-	std::vector<Element> vector;
-	vector.push_back({ 1 });
-	vector.push_back({ 1 });
-	vector.push_back({ 1 });
-	vector.push_back({ 1 });
-	vector.push_back({ 1 });
-
-	std::vector<Element> vector2;
-	vector2.push_back({ 2 });
-	vector2.push_back({ 2 });
-	vector2.push_back({ 2 });
-
-	std::cout << "Vector Fodder End" << std::endl;
-	vector2 = vector;
+	//std::cout << "/////////Container Fodder Start/////////" << std::endl;
+	//Marigold::Container<Element> container;
+	//container.push_back({ 1 });
+	//container.push_back({ 1 });
+	//container.push_back({ 1 });
+	//
+	//
+	//Marigold::Container<Element> container2;
+	//container2.push_back({ 2 });
+	//container2.push_back({ 2 });
+	//container2.push_back({ 2 });
+	//container2.push_back({ 2 });
+	//container2.push_back({ 2 });
+	//
+	//std::cout << "/////////Container Fodder End/////////" << std::endl;
+	//container2 = container;
+	//
+	//std::cout << "/////////Vector Fodder Start/////////" << std::endl;
+	//std::vector<Element> vector;
+	//vector.push_back({ 1 });
+	//vector.push_back({ 1 });
+	//vector.push_back({ 1 });
+	//
+	//
+	//std::vector<Element> vector2;
+	//vector2.push_back({ 2 });
+	//vector2.push_back({ 2 });
+	//vector2.push_back({ 2 });
+	//vector2.push_back({ 2 });
+	//vector2.push_back({ 2 });
+	//
+	//std::cout << "/////////Vector Fodder End/////////" << std::endl;
+	//vector2 = vector;
 	
 
 	//It works but test it out again with the normal vector and check how the ctor/dtor behaves!

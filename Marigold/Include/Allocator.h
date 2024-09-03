@@ -85,7 +85,7 @@ namespace {
 
 	template <class T, class U>
 	constexpr bool operator!=(const CustomAllocator<T>&, const CustomAllocator<U>&) noexcept {
-		return false;
+		return true;
 	}
 }
 #endif // !CUSTOM_ALLOCATOR

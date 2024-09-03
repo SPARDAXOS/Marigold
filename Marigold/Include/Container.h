@@ -57,7 +57,6 @@ namespace Marigold {
 		{
 			allocate_and_copy_construct(count, count);
 		}
-
 		template<IsPointer InputIterator>
 		constexpr Container(InputIterator first, InputIterator last, const Allocator& allocator = Allocator()) {
 			m_Allocator = allocator;
@@ -71,9 +70,8 @@ namespace Marigold {
 		}
 
 
-
-		//Copy Semantics - All fixed? but require to be retested.
-		constexpr Container(const Container& other) //Fixed: IT WORKS!
+		//Copy Semantics - ALL TESTED AND WORKS!
+		constexpr Container(const Container& other)
 			: m_Allocator(AllocatorTraits::select_on_container_copy_construction(other.m_Allocator))
 		{
 			if (!other.m_Iterator)
@@ -82,7 +80,7 @@ namespace Marigold {
 			reserve(other.m_Size);
 			uninitialized_copy_construct(other);
 		}
-		constexpr Container(const Container& other, const Allocator& allocator)  //Fixed: IT WORKS!
+		constexpr Container(const Container& other, const Allocator& allocator)
 			: m_Allocator(allocator)
 		{
 			if (!other.m_Iterator)
@@ -91,7 +89,7 @@ namespace Marigold {
 			reserve(other.m_Size);
 			uninitialized_copy_construct(other);
 		}
-		Container& operator=(const Container& other) noexcept { //Fixed: IT WORKS!
+		Container& operator=(const Container& other) noexcept {
 			if (this == &other)
 				return *this;
 
@@ -122,7 +120,7 @@ namespace Marigold {
 
 
 		//Move Semantics
-		constexpr Container(Container&& other) noexcept //Fixed: IT WORKS!
+		constexpr Container(Container&& other) noexcept //Fixed: IT WORKS! Not sure. Im not moving the elements. check vector behavior. Might be fine to leave it
 			: m_Allocator(std::move(other.m_Allocator)), m_Iterator(other.m_Iterator), m_Size(other.m_Size), m_Capacity(other.m_Capacity)
 		{
 			other.wipe();
@@ -131,18 +129,12 @@ namespace Marigold {
 			: m_Size(other.m_Size), m_Capacity(other.m_Capacity), m_Allocator(std::move(allocator))
 		{
 			if (allocator != other.get_allocator()) {
-				//TODO: uninitialized_alloc_move
-				for (unsigned int i = 0; i < m_Size; i++)
-					AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i))); //The iterator isnt set anywhere. Isnt this a bug?
-				
-				//TODO: Could be func. destroy_and_deallocate()
-				other.clear();
-				other.deallocate_memory_block();
+				uninitialized_allocate_and_move(std::move(other));
 			}
-			else
-				m_Iterator = other.m_Iterator;
-
-			other.wipe();
+			else {
+				m_Iterator = other.m_Iterator;//? wot hérew warning
+				other.wipe();
+			}
 		}
 		Container& operator=(Container&& other) noexcept { //Fixed: Requires a test
 			if (this == &other)
@@ -547,6 +539,10 @@ namespace Marigold {
 		constexpr inline bool empty() const noexcept { return m_Size > 0; }
 
 	private: //Memory
+		constexpr inline void destruct_and_deallocate() {
+			clear();
+			deallocate_memory_block(capacity());
+		}
 		constexpr inline Pointer allocate_memory_block(const SizeType capacity) { //REUSE IN RESERVE! BAD THIS SETS THE CAPACITY SO I CANT REUSE IT IN SOME SPOTS
 			if (capacity > max_size())
 				throw std::length_error("Max allowed container size exceeded!");
@@ -637,14 +633,10 @@ namespace Marigold {
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
 		}
 		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
-			m_Size = other.m_Size;
-			//Capacity?
-			for (unsigned int i = 0; i < m_Size; i++)
+			m_Iterator = allocate_memory_block(other.capacity());
+			for (SizeType i = 0; i < m_Size; i++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
-
-			//other, Destroy
-			//other, Deallocate
-			//other, Wipe
+			other.destruct_and_deallocate();
 		}
 
 		constexpr inline void construct(SizeType size, ConstantReference value) {
@@ -686,7 +678,7 @@ namespace Marigold {
 				destruct(first);
 
 			if (std::destructible<Type>) { // Will pass check even if fundemental
-				for (Pointer i = first; i < last; i++) {
+				for (Pointer i = last - 1; i >= first; i--) {
 					AllocatorTraits::destroy(m_Allocator, i);
 					m_Size--;
 				}
