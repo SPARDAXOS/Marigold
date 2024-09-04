@@ -1,4 +1,10 @@
 
+
+//There is an issue here somewhere that i thought of. double check this class.
+
+
+
+
 #ifndef CUSTOM_ALLOCATOR
 #define CUSTOM_ALLOCATOR
 

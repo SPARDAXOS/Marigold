@@ -33,11 +33,11 @@ struct Element {
 		}
 	}
 
-	Element(Element&& other) {
+	Element(Element&& other) noexcept {
 		std::cout << "move ctor " << number << std::endl;
 		*this = std::move(other);
 	}
-	Element& operator=(Element&& other) {
+	Element& operator=(Element&& other) noexcept {
 		std::cout << "move assignment ctor " << number << std::endl;
 		if (this == &other)
 			return *this;
@@ -77,22 +77,29 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	Element element2{ 2 };
 	Element element3{ 3 };
 	Element element4{ 4 };
+	Element element5{ 5 };
 	//std::vector<Element> vectorTest;
 	//vectorTest.reserve(10);
 	//vectorTest.emplace(vectorTest.begin() + 5, element);
 
 	//Emplace test
 	Marigold::Container<Element> container;
-	container.reserve(10);
+	container.reserve(5);
 	container.emplace(container.end(), element1);
 	container.emplace(container.end(), element2);
 	container.emplace(container.end(), element3);
+	container.insert(container.begin(), 5, element5);
 	container.emplace(container.begin() + 1, element4);
-	container.emplace(container.end(), element3);
+	container.insert(container.end(), std::move(element5));
+	container.erase(container.end() - 1);
 	
 	Marigold::Container<Element> container2;
 	container2.emplace_back(element);
 	container2.emplace_back(element);
+
+
+	container.swap(container2);
+
 	container = container2;
 
 

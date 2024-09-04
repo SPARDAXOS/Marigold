@@ -109,8 +109,8 @@ namespace Marigold {
 					}
 				}
 
-				if (other.size() > this->m_Capacity)
-					reallocate(other.capacity());
+				if (other.size() > capacity())
+					reserve(other.capacity());
 				copy_assign(other);
 				return *this;
 			}
@@ -158,8 +158,8 @@ namespace Marigold {
 			}
 			else {
 				clear();
-				if (other.size() > this->m_Capacity)
-					reallocate(other.capacity());
+				if (other.size() > capacity())
+					reserve(other.capacity());
 
 				for (SizeType i = 0; i < other.size(); i++) {
 					AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
@@ -173,21 +173,20 @@ namespace Marigold {
 			return *this;
 		}
 
-		//Dtor
+		//Dtor //IT WORKS!
 		~Container() {
 			destruct_and_deallocate();
 		}
 
-		//NOT TESTED
-		constexpr Container& operator=(InitializerList ilist) { //Requires a test.
-			clear(); //Should really make a destory function. Cause thats what i want out of this most of the time. might be fine tho. Its just that size gets changed too. Otherwise 
-			//its just destroy(first, last) really.
+		//IT WORKS!
+		constexpr Container& operator=(InitializerList ilist) {
+			clear();
 			if (ilist.size() > capacity())
-				reallocate(ilist.size()); //sus af
+				reserve(ilist.size());
 
 			m_Size = ilist.size();
 			for (SizeType i = 0; i < ilist.size(); i++)
-				AllocatorTraits::construct(m_Allocator, m_Iterator + i, ilist[i]);
+				AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(ilist.begin() + i));
 
 			return *this;
 		}
@@ -251,14 +250,14 @@ namespace Marigold {
 
 			SizeType IndexPosition = 0;
 			if (address == end())
-				IndexPosition = m_Size;
+				IndexPosition = size();
 			else
 				IndexPosition = std::distance<ConstantPointer>(begin(), address);
 
 			if (m_Capacity == 0)
 				reserve(1);
 			else if (m_Size == m_Capacity)
-				reserve(m_Capacity * REALLOCATION_FACTOR);
+				reserve(capacity() * REALLOCATION_FACTOR);
 
 			if (m_Iterator + IndexPosition == end()) {
 				try {
@@ -283,15 +282,49 @@ namespace Marigold {
 			return *(m_Iterator + (m_Size - 1));
 		}
 
-
+		// IT WORKS!
 		constexpr inline Pointer insert(ConstantPointer position, ConstantReference value) {
 			return emplace(position, value);
 		}
+
+		// IT WORKS!
 		constexpr inline Pointer insert(ConstantPointer position, Type&& value) {
 			return emplace(position, std::move(value));
 		}
-		constexpr inline Pointer insert(ConstantPointer position, SizeType count, ConstantReference value) {
 
+
+		constexpr inline Pointer insert(ConstantPointer position, SizeType count, ConstantReference value) {
+			assert(position <= end() && "Vector's argument out of range.");
+			if (count == 0)
+				return (Pointer)position;
+
+			if (position == end() - 1) {
+				if (size() + count > capacity())
+					reserve(size() + count); //Doesnt use the factor and is more memory efficient.
+
+				for (SizeType i = 0; i < count; i++)
+					emplace_back(value);
+				return end();
+			}
+			else if (position == begin()) {
+				if (size() + count > capacity())
+					reserve(size() + count); //Doesnt use the factor and is more memory efficient.
+
+				std::shift_right(begin(), begin() + capacity(), count);
+				for (SizeType i = 0; i < count; i++)
+					emplace(begin() + i, value);
+				return begin();
+			}
+			else {
+				if (size() + count > capacity())
+					reserve(size() + count); //Doesnt use the factor and is more memory efficient.
+
+				SizeType index = std::distance<ConstantPointer>(begin(), position);
+				std::shift_right(begin() + index, end(), count);
+				for (SizeType i = 0; i < count; i++)
+					emplace(begin() + index + i, value);
+				return begin() + index;
+			}
 		}
 		template<class InputIterator>
 		constexpr Pointer insert(ConstantPointer position, InputIterator first, InputIterator last) {
@@ -361,43 +394,27 @@ namespace Marigold {
 			destruct(end() - 1);
 		}
 
+		//IT WORKS!
 		constexpr inline Pointer erase(ConstantPointer iterator) {
-			if (m_Size == 0)
-				return nullptr;
+			assert(iterator < end() && "Vector subscript out of range");
 
 			if (iterator == end() - 1) {
 				pop_back();
-				return m_Iterator + (m_Size - 1);
+				return end();
 			}
 			else if (iterator == begin()) {
-				if (std::destructible<Type>)
-					AllocatorTraits::destroy(m_Allocator, iterator);
-
-				std::shift_left(m_Iterator, end(), 1);
-				m_Size--;
-				return m_Iterator;
+				destruct(iterator);
+				std::shift_left(begin(), end(), 1);
+				return  begin();
 			}
 			else {
-				int Index = find_position(iterator);
-				if (Index == -1)
-					throw std::invalid_argument("Iterator out of bounds!");
-
-				if (std::destructible<Type>) //Reuse destroy
-					AllocatorTraits::destroy(m_Allocator, iterator);
-
-				std::shift_left(begin() + Index, end(), 1);
-				m_Size--;
-				return begin() + Index;
+				SizeType index = std::distance<ConstantPointer>(begin(), iterator);
+				destruct(iterator);
+				std::shift_left(begin() + index, end(), 1);
+				return begin() + index;
 			}
 		}
-		constexpr inline Pointer erase_if(ConstantPointer iterator, Predicate predicate) {
-			if (m_Size == 0)
-				return nullptr;
-			if (predicate(*iterator))
-				erase(iterator);
 
-			return nullptr;
-		}
 
 		constexpr inline Pointer erase(ConstantPointer first, ConstantPointer last) {
 			if (m_Size == 0)
@@ -427,6 +444,15 @@ namespace Marigold {
 			std::shift_left(begin() + StartIndex, OldEnd, (EndIndex + 1) - StartIndex); //Doesnt work after refactor due to destroy modifying size
 
 			return begin() + StartIndex;
+		}
+
+		constexpr inline Pointer erase_if(ConstantPointer iterator, Predicate predicate) {
+			if (m_Size == 0)
+				return nullptr;
+			if (predicate(*iterator))
+				erase(iterator);
+
+			return nullptr;
 		}
 		constexpr inline Pointer erase_if(ConstantPointer first, ConstantPointer last, Predicate predicate) {
 			if (m_Size == 0)
@@ -478,8 +504,7 @@ namespace Marigold {
 		constexpr inline ConstantPointer end() const noexcept { return m_Iterator + m_Size; }
 		constexpr inline ConstantPointer cend() const noexcept { return m_Iterator + m_Size; }
 
-	public: //Capacity
-		//IT WORKS!
+	public: //Capacity - ALL GOOD!
 		constexpr inline void reserve(SizeType capacity) {
 			if (m_Capacity > capacity || m_Capacity == capacity)
 				return;
@@ -489,49 +514,58 @@ namespace Marigold {
 
 			reallocate(capacity);
 		}
-
-
-		constexpr inline void shrink_to_fit() { //sus
+		//RE TEST THIS!
+		constexpr inline void shrink_to_fit() {
 			if (m_Capacity == m_Size)
 				return;
 
-			if (m_Size == 0 && m_Capacity > 0) {
-				m_Allocator.deallocate<Type>(m_Iterator, m_Capacity);
-				m_Iterator = nullptr;
-				m_Capacity = 0;
-				return;
-			}
-			else {
-				Pointer NewBuffer = allocate_memory_block(m_Size);
-				if (!NewBuffer)
-					throw std::bad_alloc();
-
-				SizeType DeallocationSize = m_Capacity;
-				m_Capacity = m_Size;
-				std::memmove(NewBuffer, m_Iterator, m_Size * sizeof(Type));
-				m_Allocator.deallocate<Type>(m_Iterator, DeallocationSize);
-				m_Iterator = NewBuffer;
-			}
+			if (size() == 0)
+				deallocate_memory_block(m_Iterator, capacity(), m_Allocator);
+			else
+				reallocate(size());
 		}
 		constexpr inline void swap(Container<Type>& other) noexcept {
-			SizeType capacity = this->m_Capacity;
-			this->m_Capacity = other.m_Capacity;
-			other.m_Capacity = capacity;
+			if (this == &other)
+				return;
 
-			SizeType SizeType = this->m_Size;
-			this->m_Size = other.m_Size;
-			other.m_Size = SizeType;
-
-			Pointer Pointer = this->m_Iterator;
-			this->m_Iterator = other.m_Iterator;
-			other.m_Iterator = Pointer;
-
-			if (AllocatorTraits::propagate_on_container_swap::value)
+			if constexpr (AllocatorTraits::propagate_on_container_swap::value || AllocatorTraits::is_always_equal::value)
 				std::swap(m_Allocator, other.m_Allocator);
-		}
-		//Resize
 
-		//All of these are good!
+			std::swap(m_Iterator, other.m_Iterator);
+			std::swap(m_Capacity, other.m_Capacity);
+			std::swap(m_Size, other.m_Size);
+		}
+		constexpr void resize(SizeType count) {
+			if (count == size())
+				return;
+
+			if (count < size()) {
+				while (count < size())
+					pop_back();
+			}
+			else {
+				if (count > capacity())
+					reserve(count);
+				while (count > size())
+					emplace_back(Type());
+			}
+		}
+		constexpr void resize(SizeType count, ConstantReference value) {
+			if (count == size())
+				return;
+
+			if (count < size()) {
+				while (count < size())
+					pop_back();
+			}
+			else {
+				if (count > capacity())
+					reserve(count);
+				while (count > size())
+					emplace_back(value);
+			}
+		}
+
 		constexpr inline CustomAllocator<Type> get_allocator() const noexcept { return m_Allocator; }
 		constexpr inline SizeType max_size() const noexcept { return static_cast<SizeType>(pow(2, sizeof(Pointer) * 8) / sizeof(Type) - 1); }
 		constexpr inline SizeType capacity() const noexcept { return m_Capacity; }
@@ -595,7 +629,7 @@ namespace Marigold {
 
 		//IT WORKS!
 		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
-			reallocate(capacity);
+			reserve(capacity);
 			construct(size, value);
 		}
 
@@ -632,7 +666,7 @@ namespace Marigold {
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, *(other.m_Iterator + i));
 		}
 		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
-			reallocate(other.capacity());
+			reserve(other.capacity()); //Careful of this.
 			for (SizeType i = 0; i < m_Size; i++)
 				AllocatorTraits::construct(m_Allocator, m_Iterator + i, std::move(*(other.m_Iterator + i)));
 			other.destruct_and_deallocate();
@@ -677,6 +711,7 @@ namespace Marigold {
 			}
 		}
 
+		//IT WORKS!
 		constexpr inline void destruct(Pointer target) noexcept {
 			if (!target)
 				return;
@@ -686,6 +721,8 @@ namespace Marigold {
 
 			m_Size--;
 		}
+
+		//IT WORKS!
 		constexpr inline void destruct(ConstantPointer target) noexcept {
 			if (!target)
 				return;
@@ -722,7 +759,7 @@ namespace Marigold {
 			m_Capacity = 0;
 		}
 
-	private: //Helpers
+	private: //Helpers - Probably not needed!
 		constexpr inline int find_position(Pointer iterator) const noexcept {
 			if (iterator == begin())
 				return 0;
