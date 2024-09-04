@@ -48,6 +48,14 @@ struct Element {
 	}
 
 
+	bool operator==(const Element& other) const noexcept {
+		if (number == other.number)
+			return true;
+		return false;
+	}
+	bool operator!=(const Element& other) const noexcept {
+		return !(*this == other);
+	}
 
 	int number = 1;
 };
@@ -82,22 +90,36 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	//vectorTest.reserve(10);
 	//vectorTest.emplace(vectorTest.begin() + 5, element);
 
+	std::initializer_list<Element> list = { {2}, {2}, {2}, {2}, {2} };
+
 	//Emplace test
 	Marigold::Container<Element> container;
 	container.reserve(5);
 	container.emplace(container.end(), element1);
+	//container.insert(container.begin(), 5, element5);
+
 	container.emplace(container.end(), element2);
 	container.emplace(container.end(), element3);
-	container.insert(container.begin(), 5, element5);
-	container.emplace(container.begin() + 1, element4);
-	container.insert(container.end(), std::move(element5));
-	container.erase(container.end() - 1);
-	
+	container.emplace(container.end(), element4);
+
+	//Marigold::erase_if(container, [](Element& element) {
+	//	if (element.number == 1)
+	//		return true; 
+	//	return false;
+	//	});
+
+
+	//container.emplace(container.begin() + 1, element4);
 	Marigold::Container<Element> container2;
 	container2.emplace_back(element);
 	container2.emplace_back(element);
 
 
+	container2.assign(container.begin(), container.end());
+	container2.insert(container2.end(), 5, element5);
+	container2.insert(container2.end(), container.begin(), container.end());
+
+	Marigold::swap(container, container2);
 	container.swap(container2);
 
 	container = container2;
