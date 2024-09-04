@@ -746,11 +746,10 @@ namespace Marigold {
 	}
 
 
-	namespace {
-		//Operators
+
+	//Operators
 
 
-	}
 
 	namespace pmr {
 		template<class T>
