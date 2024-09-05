@@ -1,10 +1,5 @@
 
 
-//There is an issue here somewhere that i thought of. double check this class.
-
-
-
-
 #ifndef CUSTOM_ALLOCATOR
 #define CUSTOM_ALLOCATOR
 
@@ -75,7 +70,7 @@ public:
 	constexpr inline size_type max_size() const noexcept {
 		return std::numeric_limits<size_type>::max() / sizeof(value_type);
 	}
-	constexpr inline AllocatorLog GetLog() const noexcept {
+	constexpr inline AllocatorLog log() const noexcept {
 		return m_Log; 
 	}
 

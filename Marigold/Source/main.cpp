@@ -103,8 +103,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	Marigold::Container<Element> container;
 	container.emplace(container.end(), element1);
 	container.emplace(container.end(), element1);
+	container.emplace(container.end(), element3);
 	container.emplace(container.end(), element1);
-	container.emplace(container.begin() + 1, element3);
 	//Marigold::erase_if(container, [](Element& element) {
 	//	if (element.number == 1)
 	//		return true; 
@@ -145,8 +145,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	else
 		std::cout << "Not Equal!" << std::endl;
 
-	std::erase(vector2, element1);
-	Marigold::erase(container2, element1);
+	std::erase(vector2, element4);
+	Marigold::erase(container2, element4);
 
 
 

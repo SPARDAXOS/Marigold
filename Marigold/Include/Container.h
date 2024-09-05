@@ -6,13 +6,13 @@
 #include <functional>
 #include <cassert>
 
+
 #ifndef CONTAINER_H
 #define CONTAINER_H
 
 
 namespace Marigold {
 
-	inline constexpr auto INVALID_INDEX = -1;
 	inline constexpr std::size_t REALLOCATION_FACTOR = 2;
 
 	template <typename T>
@@ -41,7 +41,9 @@ namespace Marigold {
 		static_assert(std::is_object_v<T>, "The C++ Standard forbids containers of non-object types "
 			"because of [container.requirements].");
 
-	public: //Ctors - Double checked!
+	public: //Special member functions
+
+		//Ctors
 		constexpr Container() noexcept (noexcept(Allocator())) {};
 		constexpr explicit Container(const Allocator& allocator) noexcept
 			: m_Allocator(allocator)
@@ -57,7 +59,6 @@ namespace Marigold {
 		{
 			allocate_and_copy_construct(count, count);
 		}
-
 		template<IsPointer InputIterator>
 		constexpr Container(InputIterator first, InputIterator last, const Allocator& allocator = Allocator()) {
 			m_Allocator = allocator;
@@ -71,14 +72,13 @@ namespace Marigold {
 				construct(begin() + index, *(list.begin() + index));
 		}
 
-		//Copy Semantics - Double checked!
+		//Copy Semantics
 		constexpr Container(const Container& other)
 			: m_Allocator(AllocatorTraits::select_on_container_copy_construction(other.m_Allocator))
 		{
 			if (!other.m_Data)
 				return;
 
-			reserve(other.m_Size);
 			uninitialized_copy_construct(other);
 		}
 		constexpr Container(const Container& other, const Allocator& allocator)
@@ -87,7 +87,6 @@ namespace Marigold {
 			if (!other.m_Data)
 				return;
 
-			reserve(other.m_Size);
 			uninitialized_copy_construct(other);
 		}
 		Container& operator=(const Container& other) noexcept {
@@ -119,7 +118,7 @@ namespace Marigold {
 			return *this;
 		}
 
-		//Move Semantics - Double checked!
+		//Move Semantics
 		constexpr Container(Container&& other) noexcept
 			: m_Allocator(std::move(other.m_Allocator)), m_Data(other.m_Data), m_Size(other.m_Size), m_Capacity(other.m_Capacity)
 		{
@@ -173,12 +172,10 @@ namespace Marigold {
 			return *this;
 		}
 
-		//Dtor //IT WORKS!
 		~Container() {
 			destruct_and_deallocate();
 		}
 
-		//IT WORKS!
 		constexpr Container& operator=(InitializerList ilist) {
 			clear();
 			if (ilist.size() > capacity())
@@ -191,7 +188,7 @@ namespace Marigold {
 			return *this;
 		}
 
-	public: //Access - ALL GOOD!
+	public: //Access
 		constexpr inline Reference at(SizeType index) {
 			if (index >= m_Size)
 				throw std::out_of_range("Access Violation - " + index);
@@ -231,13 +228,14 @@ namespace Marigold {
 			return m_Data[index]; 
 		} 
 
-	public: //Insertion - ALL GOOD!
+	public: //Insertion
 		constexpr inline void push_back(ConstantReference value) {
 			emplace_back(value);
 		}
 		constexpr inline void push_back(Type&& value) {
 			emplace_back(std::move(value));
 		}
+
 		template<class... args>
 		constexpr inline Pointer emplace(ConstantPointer address, args&&... arguments) { 
 			assert(address <= end() && "Vector's argument out of range.");
@@ -268,11 +266,13 @@ namespace Marigold {
 			m_Size++;
 			return m_Data + IndexPosition;
 		}
+
 		template<class... args>
 		constexpr inline Reference emplace_back(args&&... arguments) {
 			emplace(end(), std::forward<args>(arguments)...);
 			return *(m_Data + (m_Size - 1));
 		}
+
 		constexpr inline Pointer insert(ConstantPointer position, ConstantReference value) {
 			return emplace(position, value);
 		}
@@ -386,7 +386,7 @@ namespace Marigold {
 				construct(begin() + i, *(list.begin() + i));
 		}
 
-	public: //Removal  - ALL GOOD!
+	public: //Removal
 		constexpr inline void clear() noexcept {
 			if (m_Size == 0)
 				return;
@@ -440,7 +440,7 @@ namespace Marigold {
 			return begin() + firstIndex;
 		}
 
-	public: //Iterators - ALL GOOD!
+	public: //Iterators
 		constexpr inline Pointer begin() noexcept { return m_Data; }
 		constexpr inline ConstantPointer begin() const noexcept { return m_Data; }
 		constexpr inline ConstantPointer cbegin() const noexcept { return m_Data; }
@@ -457,7 +457,7 @@ namespace Marigold {
 		constexpr inline ConstantPointer end() const noexcept { return m_Data + m_Size; }
 		constexpr inline ConstantPointer cend() const noexcept { return m_Data + m_Size; }
 
-	public: //Capacity - ALL GOOD!
+	public: //Capacity
 		constexpr inline void reserve(SizeType capacity) {
 			if (m_Capacity > capacity || m_Capacity == capacity)
 				return;
@@ -472,7 +472,7 @@ namespace Marigold {
 				return;
 
 			if (size() == 0) {
-				deallocate_memory_block(m_Data, capacity(), m_Allocator);
+				deallocate_memory_block(begin(), capacity(), m_Allocator);
 				m_Capacity = 0;
 				m_Data = nullptr;
 			}
@@ -490,6 +490,7 @@ namespace Marigold {
 			std::swap(m_Capacity, other.m_Capacity);
 			std::swap(m_Size, other.m_Size);
 		}
+
 		constexpr void resize(SizeType count) {
 			if (count == size())
 				return;
@@ -528,14 +529,7 @@ namespace Marigold {
 		constexpr inline bool empty() const noexcept { return m_Size == 0; }
 		constexpr inline bool is_null() const noexcept { return m_Data == nullptr; }
 
-	private: //Memory - ALL GOOD!
-
-		constexpr inline void destruct_and_deallocate() {
-			clear();
-			deallocate_memory_block(m_Data, capacity(), m_Allocator);
-			m_Capacity = 0;
-			m_Data = nullptr;
-		}
+	private: //Memory
 		constexpr inline Pointer allocate_memory_block(const SizeType capacity, Allocator& allocator) {
 			//No guarantee
 			Pointer NewBuffer = AllocatorTraits::allocate(allocator, sizeof(Type) * capacity);
@@ -563,7 +557,24 @@ namespace Marigold {
 			m_Capacity = capacity;
 		}
 
-
+		constexpr inline void uninitialized_copy_construct(const Container& other) {
+			reserve(other.m_Size);
+			for (SizeType i = 0; i < other.size(); i++)
+				construct(begin() + i, *(other.begin() + i));
+		}
+		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
+			reserve(other.capacity());
+			for (SizeType i = 0; i < other.size(); i++) {
+				AllocatorTraits::construct(m_Allocator, begin() + i, std::move(*(other.begin() + i)));
+				m_Size++;
+			}
+			other.destruct_and_deallocate();
+		}
+		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
+			reserve(capacity);
+			for (SizeType i = 0; i < size; i++)
+				construct(m_Data + i, value);
+		}
 		constexpr inline void swap_allocator_memory(Allocator& deallocation, Allocator& allocation, const SizeType capacity) {
 			//Uses allocation to allocate new memory block and deallocation to deallocate the old one.
 			Pointer NewBlock = allocate_memory_block(capacity, allocation);
@@ -576,13 +587,6 @@ namespace Marigold {
 			m_Data = NewBlock;
 			m_Capacity = capacity;
 		}
-
-		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
-			reserve(capacity);
-			for (SizeType i = 0; i < size; i++)
-				construct(m_Data + i, value);
-		}
-
 		constexpr inline void copy_assign(const Container& other) {
 			if (other.size() > size()) {
 				if (size() > 0)
@@ -609,21 +613,6 @@ namespace Marigold {
 			m_Size = other.m_Size;
 		}
 
-		constexpr inline void uninitialized_copy_construct(const Container& other) {
-			for (SizeType i = 0; i < other.size(); i++)
-				construct(begin() + i, *(other.begin() + i));
-		}
-
-		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
-			reserve(other.capacity());
-			for (SizeType i = 0; i < other.size(); i++) {
-				AllocatorTraits::construct(m_Allocator, begin() + i, std::move(*(other.begin() + i)));
-				m_Size++;
-			}
-			other.destruct_and_deallocate();
-		}
-
-
 		constexpr inline void construct(ConstantPointer position, ConstantReference value) {
 			if (!position)
 				return;
@@ -631,8 +620,6 @@ namespace Marigold {
 			AllocatorTraits::construct(m_Allocator, position, value);
 			m_Size++;
 		}
-
-
 		template<class... args>
 		constexpr inline void construct_and_shift(SizeType position, args&&... arguments) {
 			if (position > size())
@@ -655,7 +642,6 @@ namespace Marigold {
 			}
 		}
 
-
 		constexpr inline void destruct(Pointer target) noexcept {
 			if (!target)
 				return;
@@ -665,8 +651,6 @@ namespace Marigold {
 
 			m_Size--;
 		}
-
-
 		constexpr inline void destruct(ConstantPointer target) noexcept {
 			if (!target)
 				return;
@@ -676,8 +660,6 @@ namespace Marigold {
 
 			m_Size--;
 		}
-
-
 		constexpr inline void destruct(Pointer first, Pointer last) noexcept {
 			if (!first || !last)
 				return;
@@ -695,7 +677,12 @@ namespace Marigold {
 				}
 			}
 		}
-
+		constexpr inline void destruct_and_deallocate() {
+			clear();
+			deallocate_memory_block(m_Data, capacity(), m_Allocator);
+			m_Capacity = 0;
+			m_Data = nullptr;
+		}
 
 		constexpr inline void wipe() noexcept {
 			m_Data = nullptr;
@@ -711,13 +698,12 @@ namespace Marigold {
 	};
 
 
-	//IT WORKS!
+	//Non-member functions
 	template<class Type, class Allocator>
 	constexpr void swap(Container<Type, Allocator>& lhs, Container<Type, Allocator>& rhs) noexcept {
 		lhs.swap(rhs);
 	}
 
-	//IT WORKS!
 	template<typename Type, typename Allocator, typename Val = Type>
 	constexpr Container<Type, Allocator>::SizeType erase(Container<Type, Allocator>& container, const Val& value) {
 		auto it = std::remove(container.begin(), container.end(), value);
@@ -726,7 +712,6 @@ namespace Marigold {
 		return r;
 	}
 
-	//IT WORKS!
 	template<class Type, class Allocator, class Predicate>
 	constexpr Container<Type, Allocator>::SizeType erase_if(Container<Type, Allocator>& container, Predicate predicate) {
 		auto it = std::remove_if(container.begin(), container.end(), predicate);
@@ -736,8 +721,7 @@ namespace Marigold {
 	}
 
 
-
-	//Operators - ALL GOOD!	
+	//Operators
 	template<typename Type, typename Allocator>
 	constexpr bool operator==(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
 		return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
@@ -749,6 +733,7 @@ namespace Marigold {
 	}
 
 
+	//PMR
 	namespace pmr {
 		template<class T>
 		using Container = Marigold::Container<T, std::pmr::polymorphic_allocator<T>>;
