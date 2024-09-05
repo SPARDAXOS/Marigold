@@ -42,8 +42,6 @@ namespace Marigold {
 			"because of [container.requirements].");
 
 	public: //Special member functions
-
-		//Ctors
 		constexpr Container() noexcept (noexcept(Allocator())) {};
 		constexpr explicit Container(const Allocator& allocator) noexcept
 			: m_Allocator(allocator)
