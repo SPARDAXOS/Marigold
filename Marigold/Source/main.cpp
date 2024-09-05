@@ -56,6 +56,13 @@ struct Element {
 	bool operator!=(const Element& other) const noexcept {
 		return !(*this == other);
 	}
+	bool operator<(const Element& other) const noexcept {
+		return number < other.number;
+	}
+	bool operator>(const Element& other) const noexcept {
+		return number > other.number;
+	}
+
 
 	int number = 1;
 };
@@ -94,14 +101,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 	//Emplace test
 	Marigold::Container<Element> container;
-	container.reserve(5);
 	container.emplace(container.end(), element1);
-	//container.insert(container.begin(), 5, element5);
-
-	container.emplace(container.end(), element2);
-	container.emplace(container.end(), element3);
-	container.emplace(container.end(), element4);
-
+	container.emplace(container.end(), element1);
+	container.emplace(container.end(), element1);
+	container.emplace(container.begin() + 1, element3);
 	//Marigold::erase_if(container, [](Element& element) {
 	//	if (element.number == 1)
 	//		return true; 
@@ -111,8 +114,40 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 
 	//container.emplace(container.begin() + 1, element4);
 	Marigold::Container<Element> container2;
-	container2.emplace_back(element);
-	container2.emplace_back(element);
+	container2.emplace_back(element1);
+	container2.emplace_back(element2);
+	container2.emplace_back(element3);
+	container2.emplace_back(element4);
+
+	if (container <= container2)
+		std::cout << "Equal!" << std::endl;
+	else
+		std::cout << "Not Equal!" << std::endl;
+
+
+
+
+
+
+	std::vector<Element> vector1;
+	vector1.emplace_back(element1);
+	vector1.emplace_back(element2);
+	vector1.emplace_back(element3);
+	vector1.emplace_back(element4);
+
+	std::vector<Element> vector2;
+	vector2.emplace_back(element1);
+	vector2.emplace_back(element2);
+	vector2.emplace_back(element3);
+	vector2.emplace_back(element4);
+	if (vector1 <= vector2)
+		std::cout << "Equal!" << std::endl;
+	else
+		std::cout << "Not Equal!" << std::endl;
+
+	std::erase(vector2, element1);
+	Marigold::erase(container2, element1);
+
 
 
 	container2.assign(container.begin(), container.end());
@@ -150,7 +185,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 	vector.push_back({ 1 });
 	
 	std::cout << "/////////Vector Process Start/////////" << std::endl;
-	std::vector<Element> vector2(std::move(vector));
+	//std::vector<Element> vector2(std::move(vector));
 	std::cout << "/////////Vector Process End/////////" << std::endl;
 
 

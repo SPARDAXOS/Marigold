@@ -52,7 +52,6 @@ public:
 	}
 
 public:
-	//Incosistency between allocate and deallocate with size usage.
 	[[nodiscard]] constexpr inline pointer allocate(const size_type size) {
 		if (size == 0)
 			return nullptr;
@@ -61,12 +60,13 @@ public:
 		m_Log.m_Allocations++;
 		return static_cast<pointer>(malloc(size));;
 	}
+
 	template<typename T>
 	constexpr inline void deallocate(T* address, size_type size) {
 		if (!address)
 			return;
 
-		m_Log.m_DeallocatedMemory += size * sizeof(T);
+		m_Log.m_DeallocatedMemory += size;
 		m_Log.m_Deallocations++;
 		free(address);
 	}
@@ -86,12 +86,12 @@ private:
 namespace {
 	template <class T, class U>
 	constexpr bool operator==(const CustomAllocator<T>&, const CustomAllocator<U>&) noexcept {
-		return false; //true
+		return true; //true
 	}
 
 	template <class T, class U>
 	constexpr bool operator!=(const CustomAllocator<T>&, const CustomAllocator<U>&) noexcept {
-		return true; //false
+		return false; //false
 	}
 }
 #endif // !CUSTOM_ALLOCATOR

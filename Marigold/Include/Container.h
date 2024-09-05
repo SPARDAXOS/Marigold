@@ -38,12 +38,10 @@ namespace Marigold {
 		using DifferenceType = std::ptrdiff_t;
 		using AllocatorTraits = std::allocator_traits<CustomAllocator<Type>>;
 
-
-
 		static_assert(std::is_object_v<T>, "The C++ Standard forbids containers of non-object types "
 			"because of [container.requirements].");
 
-	public: //Ctors
+	public: //Ctors - Double checked!
 		constexpr Container() noexcept (noexcept(Allocator())) {};
 		constexpr explicit Container(const Allocator& allocator) noexcept
 			: m_Allocator(allocator)
@@ -59,6 +57,7 @@ namespace Marigold {
 		{
 			allocate_and_copy_construct(count, count);
 		}
+
 		template<IsPointer InputIterator>
 		constexpr Container(InputIterator first, InputIterator last, const Allocator& allocator = Allocator()) {
 			m_Allocator = allocator;
@@ -72,7 +71,7 @@ namespace Marigold {
 				construct(begin() + index, *(list.begin() + index));
 		}
 
-		//Copy Semantics
+		//Copy Semantics - Double checked!
 		constexpr Container(const Container& other)
 			: m_Allocator(AllocatorTraits::select_on_container_copy_construction(other.m_Allocator))
 		{
@@ -120,21 +119,21 @@ namespace Marigold {
 			return *this;
 		}
 
-		//Move Semantics
-		constexpr Container(Container&& other) noexcept //Fixed: IT WORKS! Not sure. Im not moving the elements. check vector behavior. Might be fine to leave it
+		//Move Semantics - Double checked!
+		constexpr Container(Container&& other) noexcept
 			: m_Allocator(std::move(other.m_Allocator)), m_Data(other.m_Data), m_Size(other.m_Size), m_Capacity(other.m_Capacity)
 		{
 			other.wipe();
 		}
-		constexpr Container(Container&& other, const Allocator& allocator)  //Fixed: Requires a test
-			: m_Size(other.m_Size), m_Capacity(other.m_Capacity), m_Allocator(std::move(allocator))
+		constexpr Container(Container&& other, const Allocator& allocator)
+			:	m_Allocator(std::move(allocator))
 		{
-			//flip them?
-			if (allocator != other.get_allocator()) { 
+			if (allocator != other.get_allocator())
 				uninitialized_allocate_and_move(std::move(other));
-			}
 			else {
-				m_Data = other.m_Data;//? wot hérew warning
+				m_Capacity = other.m_Capacity;
+				m_Size = other.m_Size;
+				m_Data = other.m_Data;
 				other.wipe();
 			}
 		}
@@ -187,7 +186,7 @@ namespace Marigold {
 
 			m_Size = ilist.size();
 			for (SizeType i = 0; i < ilist.size(); i++)
-				AllocatorTraits::construct(m_Allocator, m_Data + i, *(ilist.begin() + i));
+				AllocatorTraits::construct(m_Allocator, begin() + i, *(ilist.begin() + i));
 
 			return *this;
 		}
@@ -352,6 +351,7 @@ namespace Marigold {
 
 			return begin() + index;
 		}
+
 		constexpr void assign(SizeType count, ConstantReference value) {
 			if (size() > 0)
 				clear();
@@ -362,10 +362,9 @@ namespace Marigold {
 			for (SizeType i = 0; i < count; i++)
 				construct(begin() + i, value);
 		}
-
-		//Behavior might defer slightly from standard due to documentation errors.
 		template<typename InputIt>
 		constexpr void assign(InputIt first, InputIt last) {
+			//Behavior might defer slightly from standard due to documentation errors.
 			if (size() > 0)
 				clear();
 
@@ -529,15 +528,14 @@ namespace Marigold {
 		constexpr inline bool empty() const noexcept { return m_Size == 0; }
 		constexpr inline bool is_null() const noexcept { return m_Data == nullptr; }
 
-	private: //Memory
-		//IT WORKS!
+	private: //Memory - ALL GOOD!
+
 		constexpr inline void destruct_and_deallocate() {
 			clear();
 			deallocate_memory_block(m_Data, capacity(), m_Allocator);
 			m_Capacity = 0;
+			m_Data = nullptr;
 		}
-
-		//IT WORKS!
 		constexpr inline Pointer allocate_memory_block(const SizeType capacity, Allocator& allocator) {
 			//No guarantee
 			Pointer NewBuffer = AllocatorTraits::allocate(allocator, sizeof(Type) * capacity);
@@ -546,18 +544,14 @@ namespace Marigold {
 
 			return NewBuffer;
 		}
-
-		//IT WORKS! but requires reusage in some places.
 		constexpr inline void deallocate_memory_block(Pointer location, const SizeType size, Allocator& allocator) {
 			if (!location || size == 0)
 				return;
 
-			AllocatorTraits::deallocate(allocator, location, size);
+			AllocatorTraits::deallocate(allocator, location, sizeof(Type) * size);
 		}
-
-		//IT WORKS!
-		//Doesnt provide guarantee
 		constexpr inline void reallocate(const SizeType capacity) {
+			//Doesnt provide guarantee
 			Pointer NewBlock = allocate_memory_block(capacity, m_Allocator);
 			if (m_Size > 0)
 				std::memmove(NewBlock, m_Data, m_Size * sizeof(Type));
@@ -569,9 +563,9 @@ namespace Marigold {
 			m_Capacity = capacity;
 		}
 
-		//IT WORKS!
-		//Uses allocation to allocate new memory block and deallocation to deallocate the old one. 
+
 		constexpr inline void swap_allocator_memory(Allocator& deallocation, Allocator& allocation, const SizeType capacity) {
+			//Uses allocation to allocate new memory block and deallocation to deallocate the old one.
 			Pointer NewBlock = allocate_memory_block(capacity, allocation);
 
 			if (m_Size > 0)
@@ -583,19 +577,16 @@ namespace Marigold {
 			m_Capacity = capacity;
 		}
 
-
-		//THIS IS BROKEN NOW
-		//IT WORKS!
 		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
 			reserve(capacity);
 			for (SizeType i = 0; i < size; i++)
 				construct(m_Data + i, value);
 		}
 
-		//IT WORKS!
 		constexpr inline void copy_assign(const Container& other) {
 			if (other.size() > size()) {
-				destruct(begin(), end()); //It makes sense cause other.size() is higher so they all are gonna get replaced really.
+				if (size() > 0)
+					destruct(begin(), end());
 				for (unsigned int i = 0; i < other.size(); i++) {
 					if (i >= m_Size)
 						AllocatorTraits::construct(m_Allocator, m_Data + i, *(other.m_Data + i));
@@ -618,26 +609,21 @@ namespace Marigold {
 			m_Size = other.m_Size;
 		}
 
-
-		//Test those along with the ctors and both this and that section should be done.
 		constexpr inline void uninitialized_copy_construct(const Container& other) {
-			m_Size = other.size();
-			for (unsigned int i = 0; i < size(); i++)
-				AllocatorTraits::construct(m_Allocator, begin() + i, *(other.begin() + i));
+			for (SizeType i = 0; i < other.size(); i++)
+				construct(begin() + i, *(other.begin() + i));
 		}
+
 		constexpr inline void uninitialized_allocate_and_move(Container&& other) {
-			reserve(other.capacity()); //Careful of this.
-			for (SizeType i = 0; i < size(); i++)
+			reserve(other.capacity());
+			for (SizeType i = 0; i < other.size(); i++) {
 				AllocatorTraits::construct(m_Allocator, begin() + i, std::move(*(other.begin() + i)));
+				m_Size++;
+			}
 			other.destruct_and_deallocate();
 		}
 
 
-
-		
-
-
-		//IT WORKS!
 		constexpr inline void construct(ConstantPointer position, ConstantReference value) {
 			if (!position)
 				return;
@@ -646,21 +632,21 @@ namespace Marigold {
 			m_Size++;
 		}
 
-		//IT WORKS!
-		//Doesnt provide strong guarantee if type can throw.
+
 		template<class... args>
 		constexpr inline void construct_and_shift(SizeType position, args&&... arguments) {
 			if (position > size())
 				throw std::invalid_argument("Invalid iterator access");
 
+			//Doesnt provide strong guarantee if type can throw.
 			if (size() + 1 == capacity()) {
-				Pointer NewBuffer = allocate_memory_block(sizeof(Type), m_Allocator); //Temporary block
+				Pointer NewBuffer = allocate_memory_block(1, m_Allocator); //Temporary block
 
 				AllocatorTraits::construct(m_Allocator, NewBuffer, arguments...);
 				std::move_backward(m_Data + position, m_Data + size(), m_Data + size() + 1);
 				*(m_Data + position) = std::move(*(NewBuffer));
 
-				deallocate_memory_block(NewBuffer, sizeof(Type), m_Allocator); //Clean Temporary block
+				deallocate_memory_block(NewBuffer, 1, m_Allocator); //Clean Temporary block
 			}
 			else {
 				AllocatorTraits::construct(m_Allocator, m_Data + size(), arguments...);
@@ -669,7 +655,7 @@ namespace Marigold {
 			}
 		}
 
-		//IT WORKS!
+
 		constexpr inline void destruct(Pointer target) noexcept {
 			if (!target)
 				return;
@@ -680,7 +666,7 @@ namespace Marigold {
 			m_Size--;
 		}
 
-		//IT WORKS!
+
 		constexpr inline void destruct(ConstantPointer target) noexcept {
 			if (!target)
 				return;
@@ -691,7 +677,7 @@ namespace Marigold {
 			m_Size--;
 		}
 
-		//IT WORKS!
+
 		constexpr inline void destruct(Pointer first, Pointer last) noexcept {
 			if (!first || !last)
 				return;
@@ -710,7 +696,7 @@ namespace Marigold {
 			}
 		}
 
-		//IT WORKS!
+
 		constexpr inline void wipe() noexcept {
 			m_Data = nullptr;
 			m_Size = 0;
@@ -725,13 +711,13 @@ namespace Marigold {
 	};
 
 
-	//Swap - IT WORKS!
+	//IT WORKS!
 	template<class Type, class Allocator>
 	constexpr void swap(Container<Type, Allocator>& lhs, Container<Type, Allocator>& rhs) noexcept {
 		lhs.swap(rhs);
 	}
 
-	//Both work but the erase is kinda sus!
+	//IT WORKS!
 	template<typename Type, typename Allocator, typename Val = Type>
 	constexpr Container<Type, Allocator>::SizeType erase(Container<Type, Allocator>& container, const Val& value) {
 		auto it = std::remove(container.begin(), container.end(), value);
@@ -740,6 +726,7 @@ namespace Marigold {
 		return r;
 	}
 
+	//IT WORKS!
 	template<class Type, class Allocator, class Predicate>
 	constexpr Container<Type, Allocator>::SizeType erase_if(Container<Type, Allocator>& container, Predicate predicate) {
 		auto it = std::remove_if(container.begin(), container.end(), predicate);
@@ -750,16 +737,16 @@ namespace Marigold {
 
 
 
-	//Operators
-	//template<typename Type, typename Allocator>
-	//constexpr bool operator==(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
-	//	return false;
-	//}
+	//Operators - ALL GOOD!	
+	template<typename Type, typename Allocator>
+	constexpr bool operator==(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
+		return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
 
-	//template<typename Type, typename Allocator>
-	//constexpr auto operator<=>(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
-	//	return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::_Synth_three_way);
-	//}
+	template<typename Type, typename Allocator>
+	constexpr std::_Synth_three_way_result<Type> operator<=>(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
+		return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::_Synth_three_way());
+	}
 
 
 	namespace pmr {
