@@ -157,6 +157,8 @@
   <ItemGroup>
     <ClInclude Include="Include\Allocator.h" />
     <ClInclude Include="Include\Container.h" />
+    <ClInclude Include="Include\Profiler.h" />
+    <ClInclude Include="Include\Sorting.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp" />
