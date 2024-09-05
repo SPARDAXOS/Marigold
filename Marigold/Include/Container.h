@@ -583,10 +583,13 @@ namespace Marigold {
 			m_Capacity = capacity;
 		}
 
+
+		//THIS IS BROKEN NOW
 		//IT WORKS!
 		constexpr inline void allocate_and_copy_construct(SizeType capacity, SizeType size, ConstantReference value = Type()) {
 			reserve(capacity);
-			construct(size, value);
+			for (SizeType i = 0; i < size; i++)
+				construct(m_Data + i, value);
 		}
 
 		//IT WORKS!
@@ -748,7 +751,15 @@ namespace Marigold {
 
 
 	//Operators
+	//template<typename Type, typename Allocator>
+	//constexpr bool operator==(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
+	//	return false;
+	//}
 
+	//template<typename Type, typename Allocator>
+	//constexpr auto operator<=>(const Container<Type, Allocator>& lhs, const Container<Type, Allocator>& rhs) {
+	//	return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::_Synth_three_way);
+	//}
 
 
 	namespace pmr {
